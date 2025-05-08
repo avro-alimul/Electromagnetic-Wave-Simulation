@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Electromagnetic Wave Simulation</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            touch-action: none;
+        }
+        #container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+        #title {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #legend {
+            position: absolute;
+            top: 50px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #menu-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            font-size: 24px;
+            z-index: 101;
+            display: none;
+            cursor: pointer;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 10px;
+            color: white;
+            max-width: 300px;
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+        .control-group {
+            margin-bottom: 10px;
+        }
+        label {
+            display: inline-block;
+            width: 120px;
+            font-size: 14px;
+        }
+        input[type="range"] {
+            width: 150px;
+            max-width: 100%;
+        }
+        .value-display {
+            display: inline-block;
+            width: 40px;
+            text-align: right;
+            font-size: 14px;
+        }
+        button {
+            background: #444;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #555;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            margin-right: 8px;
+            border-radius: 2px;
+        }
+        
+        @media (max-width: 768px) {
+            #title {
+                font-size: 14px;
+                top: 5px;
+                left: 5px;
+                padding: 5px 8px;
+            }
+            #legend {
+                font-size: 11px;
+                top: 35px;
+                left: 5px;
+                padding: 5px 8px;
+            }
+            #menu-toggle {
+                display: block;
+            }
+            #controls {
+                max-width: calc(100% - 40px);
+                left: 20px;
+                bottom: 80px;
+                transform: translateY(calc(100% + 20px));
+            }
+            #controls.visible {
+                transform: translateY(0);
+            }
+            label {
+                width: 100px;
+                font-size: 12px;
+            }
+            .value-display {
+                width: 30px;
+                font-size: 12px;
+            }
+            button {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container"></div>
+    <div id="title">3D Electromagnetic Wave Simulation</div>
+    <div id="legend">
+        <div class="legend-item"><div class="legend-color" style="background: #ff5555;"></div>Electric Field (E)</div>
+        <div class="legend-item"><div class="legend-color" style="background: #5555ff;"></div>Magnetic Field (B)</div>
+        <div class="legend-item"><div class="legend-color" style="background: #ffffff;"></div>Propagation Direction (k)</div>
+    </div>
+    <button id="menu-toggle">☰</button>
+    <div id="controls">
+        <div class="control-group">
+            <label for="frequency">Frequency:</label>
+            <input type="range" id="frequency" min="0.5" max="3" step="0.1" value="1.5">
+            <span id="frequencyValue" class="value-display">1.5</span>
+        </div>
+        <div class="control-group">
+            <label for="wavelength">Wavelength:</label>
+            <input type="range" id="wavelength" min="2" max="10" step="0.5" value="5">
+            <span id="wavelengthValue" class="value-display">5.0</span>
+        </div>
+        <div class="control-group">
+            <label for="amplitude">Amplitude:</label>
+            <input type="range" id="amplitude" min="0.5" max="2" step="0.1" value="1">
+            <span id="amplitudeValue" class="value-display">1.0</span>
+        </div>
+        <div class="control-group">
+            <label for="particles">Particle Density:</label>
+            <input type="range" id="particles" min="20" max="100" step="5" value="50">
+            <span id="particlesValue" class="value-display">50</span>
+        </div>
+        <div class="control-group" style="text-align: center;">
+            <button id="toggleAnimation">Pause</button>
+            <button id="resetCamera">Reset View</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <script>
+        // Scene setup
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111122);
+        
+        const container = document.getElementById('container');
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        container.appendChild(renderer.domElement);
+        
+        // Camera
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const initialCameraPosition = new THREE.Vector3(10, 10, 20);
+        camera.position.copy(initialCameraPosition);
+        
+        // Controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = true;
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        // Axes helper
+        const axesHelper = new THREE.AxesHelper(10);
+        scene.add(axesHelper);
+        
+        // Parameters
+        const params = {
+            frequency: 1.5,
+            wavelength: 5,
+            amplitude: 1,
+            particleDensity: 50,
+            isPlaying: true
+        };
+        
+        // Wave particles
+        const particles = {
+            electric: [],
+            magnetic: []
+        };
+        
+        const particleGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+        const eMaterial = new THREE.MeshPhongMaterial({ color: 0xff5555 });
+        const bMaterial = new THREE.MeshPhongMaterial({ color: 0x5555ff });
+        
+        function initParticles() {
+            // Clear existing particles
+            particles.electric.forEach(p => scene.remove(p));
+            particles.magnetic.forEach(p => scene.remove(p));
+            particles.electric = [];
+            particles.magnetic = [];
+            
+            // Create new particles
+            for (let i = 0; i < params.particleDensity; i++) {
+                const x = (i / params.particleDensity) * 20 - 10;
+                
+                // Electric field particles (Y-axis)
+                const eParticle = new THREE.Mesh(particleGeometry, eMaterial);
+                eParticle.position.set(x, 0, 0);
+                scene.add(eParticle);
+                particles.electric.push(eParticle);
+                
+                // Magnetic field particles (Z-axis)
+                const bParticle = new THREE.Mesh(particleGeometry, bMaterial);
+                bParticle.position.set(x, 0, 0);
+                scene.add(bParticle);
+                particles.magnetic.push(bParticle);
+            }
+        }
+        
+        // Field lines
+        const fieldLines = {
+            electric: new THREE.Line(),
+            magnetic: new THREE.Line()
+        };
+        
+        function initFieldLines() {
+            const eLineGeometry = new THREE.BufferGeometry();
+            const bLineGeometry = new THREE.BufferGeometry();
+            
+            const eLineMaterial = new THREE.LineBasicMaterial({ color: 0xff5555, transparent: true, opacity: 0.7 });
+            const bLineMaterial = new THREE.LineBasicMaterial({ color: 0x5555ff, transparent: true, opacity: 0.7 });
+            
+            fieldLines.electric = new THREE.Line(eLineGeometry, eLineMaterial);
+            fieldLines.magnetic = new THREE.Line(bLineGeometry, bLineMaterial);
+            
+            scene.add(fieldLines.electric);
+            scene.add(fieldLines.magnetic);
+        }
+        
+        // Time
+        let time = 0;
+        
+        // Animation
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            if (params.isPlaying) {
+                time += 0.02;
+                updateWave();
+            }
+            
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        
+        function updateWave() {
+            const k = (2 * Math.PI) / params.wavelength;
+            const omega = 2 * Math.PI * params.frequency;
+            const amplitude = params.amplitude;
+            
+            // Update particles
+            for (let i = 0; i < particles.electric.length; i++) {
+                const x = (i / particles.electric.length) * 20 - 10;
+                
+                // Electric field (Y-axis)
+                const eY = amplitude * Math.sin(k * x - omega * time);
+                particles.electric[i].position.y = eY;
+                
+                // Magnetic field (Z-axis)
+                const bZ = amplitude * Math.sin(k * x - omega * time);
+                particles.magnetic[i].position.z = bZ;
+            }
+            
+            // Update field lines
+            updateFieldLines(k, omega, amplitude);
+        }
+        
+        function updateFieldLines(k, omega, amplitude) {
+            const segments = 200;
+            const ePositions = new Float32Array(segments * 3);
+            const bPositions = new Float32Array(segments * 3);
+            
+            for (let i = 0; i < segments; i++) {
+                const x = (i / segments) * 20 - 10;
+                const t = i * 3;
+                
+                // Electric field line (Y-axis)
+                ePositions[t] = x;
+                ePositions[t + 1] = amplitude * Math.sin(k * x - omega * time);
+                ePositions[t + 2] = 0;
+                
+                // Magnetic field line (Z-axis)
+                bPositions[t] = x;
+                bPositions[t + 1] = 0;
+                bPositions[t + 2] = amplitude * Math.sin(k * x - omega * time);
+            }
+            
+            fieldLines.electric.geometry.setAttribute('position', new THREE.BufferAttribute(ePositions, 3));
+            fieldLines.magnetic.geometry.setAttribute('position', new THREE.BufferAttribute(bPositions, 3));
+            
+            fieldLines.electric.geometry.attributes.position.needsUpdate = true;
+            fieldLines.magnetic.geometry.attributes.position.needsUpdate = true;
+        }
+        
+        // UI Controls
+        document.getElementById('frequency').addEventListener('input', function(e) {
+            params.frequency = parseFloat(e.target.value);
+            document.getElementById('frequencyValue').textContent = params.frequency.toFixed(1);
+        });
+        
+        document.getElementById('wavelength').addEventListener('input', function(e) {
+            params.wavelength = parseFloat(e.target.value);
+            document.getElementById('wavelengthValue').textContent = params.wavelength.toFixed(1);
+        });
+        
+        document.getElementById('amplitude').addEventListener('input', function(e) {
+            params.amplitude = parseFloat(e.target.value);
+            document.getElementById('amplitudeValue').textContent = params.amplitude.toFixed(1);
+        });
+        
+        document.getElementById('particles').addEventListener('input', function(e) {
+            params.particleDensity = parseInt(e.target.value);
+            document.getElementById('particlesValue').textContent = params.particleDensity;
+            initParticles();
+        });
+        
+        document.getElementById('toggleAnimation').addEventListener('click', function() {
+            params.isPlaying = !params.isPlaying;
+            this.textContent = params.isPlaying ? 'Pause' : 'Play';
+        });
+        
+        document.getElementById('resetCamera').addEventListener('click', function() {
+            camera.position.copy(initialCameraPosition);
+            controls.reset();
+        });
+        
+        // Mobile menu toggle
+        const menuToggle = document.getElementById('menu-toggle');
+        const controlsPanel = document.getElementById('controls');
+        
+        menuToggle.addEventListener('click', function() {
+            controlsPanel.classList.toggle('visible');
+        });
+        
+        // Close menu when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768 && 
+                !controlsPanel.contains(e.target) && 
+                e.target !== menuToggle) {
+                controlsPanel.classList.remove('visible');
+            }
+        });
+        
+        // Window resize
+        function handleResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Show/hide mobile menu button based on screen size
+            if (window.innerWidth <= 768) {
+                menuToggle.style.display = 'block';
+                controlsPanel.classList.remove('visible');
+            } else {
+                menuToggle.style.display = 'none';
+                controlsPanel.classList.add('visible');
+            }
+        }
+        
+        window.addEventListener('resize', handleResize);
+        
+        // Initialize and start
+        handleResize(); // Set initial mobile/desktop state
+        initParticles();
+        initFieldLines();
+        animate();
+    </script>
+</body>
+</html>
