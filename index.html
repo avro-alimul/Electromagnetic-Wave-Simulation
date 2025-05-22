@@ -148,6 +148,28 @@
             }
         }
     </style>
+    <style>
+        footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 12px;
+            padding: 10px 0;
+            z-index: 99;
+        }
+
+        footer a {
+            color: rgba(255, 255, 255, 0.9);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
     <div id="container"></div>
@@ -184,6 +206,10 @@
             <button id="resetCamera">Reset View</button>
         </div>
     </div>
+
+    <footer>
+        <p>&copy; 2025 Md. Alimul Islam Avro. All Rights Reserved. | <a href="https://alimulavro.netlify.app/" target="_blank">Portfolio</a> | <a href="https://www.facebook.com/alimul.avro" target="_blank">Facebook</a></p>
+    </footer>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
